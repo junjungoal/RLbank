@@ -1,10 +1,9 @@
 #!/bin/bash -x
 gpu=$1
 seed=$2
-algo='sac'
-prefix="SAC"
+algo='td3'
+prefix="TD3"
 env="Reacher-v2"
-# env="Hopper-v2"
 debug="False"
 log_root_dir="./logs"
 entity="junyamada107"

@@ -18,6 +18,7 @@ from util.logger import logger
 from util.pytorch import get_ckpt_path, count_parameters
 from util.info import Info
 
+
 class OffPolicyTrainer(BaseTrainer):
     def __init__(self, config):
         super().__init__(config)
@@ -44,19 +45,20 @@ class OffPolicyTrainer(BaseTrainer):
             ob = env.reset()
             done = False
             ep_len = 0
+            ep_rew = 0
             reward_info = Info()
             ep_info = Info()
             train_info = {}
             while not done and ep_len < env.max_episode_steps:
                 transition = {}
-                if init_step < config.init_steps:
+                if init_step > config.init_steps:
                     ac, ac_before_activation = self._agent.act(ob)
                 else:
                     ac = env.action_space.sample()
                     ac_before_activation = None
                 rollout.add({'ob': ob, 'ac': ac, 'ac_before_activation': ac_before_activation})
                 ob, reward, done, info = env.step(ac)
-                ep_rew = reward
+                ep_rew += reward
                 reward_info.add(info)
                 rollout.add({'done': done, 'rew': reward, 'ob_next': ob})
                 self._agent.store_episode(rollout.get())

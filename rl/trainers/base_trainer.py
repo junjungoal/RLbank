@@ -208,7 +208,7 @@ class BaseTrainer(object):
         text = "{:4} {}".format(env._episode_length,
                                 env._episode_reward)
 
-        frame = env.render('rgb_array') * 255.0
+        frame = env.render('rgb_array')
         fheight, fwidth = frame.shape[:2]
         frame = np.concatenate([frame, np.zeros((fheight, fwidth, 3))], 0)
 

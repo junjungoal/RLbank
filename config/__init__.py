@@ -28,7 +28,7 @@ def argparser():
     parser.add_argument("--actor_num_hid_layers", type=int, default=2)
 
     # off-policy rl
-    parser.add_argument("--buffer_size", type=int, default=int(1e3),
+    parser.add_argument("--buffer_size", type=int, default=int(1e6),
                         help="the size of the buffer (# episodes)")
     parser.add_argument("--discount_factor", type=float, default=0.99,
                         help="the discount factor")
