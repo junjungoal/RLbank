@@ -38,7 +38,7 @@ def argparser():
                         help="the learning rate of the critic")
     parser.add_argument("--polyak", type=float, default=0.995,
                         help="the average coefficient")
-    parser.add_argument("--start_steps", type=float, default=10000)
+    parser.add_argument("--init_steps", type=float, default=10000)
 
     # training
     parser.add_argument("--is_train", type=str2bool, default=True)
@@ -63,8 +63,8 @@ def argparser():
     parser.add_argument("--gae_lambda", type=float, default=0.95)
 
     # log
-    parser.add_argument("--log_interval", type=int, default=100)
-    parser.add_argument("--evaluate_interval", type=int, default=1000)
+    parser.add_argument("--log_interval", type=int, default=20)
+    parser.add_argument("--evaluate_interval", type=int, default=100)
     parser.add_argument("--ckpt_interval", type=int, default=1e5)
     parser.add_argument("--log_root_dir", type=str, default="logs")
     parser.add_argument('--wandb', type=str2bool, default=False,
