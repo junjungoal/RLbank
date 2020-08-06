@@ -65,7 +65,7 @@ def argparser():
     # log
     parser.add_argument("--log_interval", type=int, default=100)
     parser.add_argument("--evaluate_interval", type=int, default=100)
-    parser.add_argument("--ckpt_interval", type=int, default=200)
+    parser.add_argument("--ckpt_interval", type=int, default=1e5)
     parser.add_argument("--log_root_dir", type=str, default="logs")
     parser.add_argument('--wandb', type=str2bool, default=False,
                         help="set it True if you want to use wandb")

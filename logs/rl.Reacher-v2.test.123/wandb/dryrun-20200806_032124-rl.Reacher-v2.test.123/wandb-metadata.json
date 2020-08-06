@@ -1,0 +1,25 @@
+{
+    "root": "/home/jun/projects/RLbank",
+    "program": "/home/jun/projects/RLbank/main.py",
+    "git": {
+        "remote": "git@github.com:junjungoal/RLbank.git",
+        "commit": "ac6b5227673c6a9751ff3ff928d8dd87693a96b9"
+    },
+    "email": "junyamada107@gmail.com",
+    "startedAt": "2020-08-06T03:21:24.470174",
+    "host": "lim001",
+    "username": "jun",
+    "executable": "/home/jun/.virtualenvs/hrl-planner/bin/python",
+    "os": "Linux-4.4.0-151-generic-x86_64-with-Ubuntu-16.04-xenial",
+    "python": "3.7.6",
+    "gpu": "GeForce GTX 1060 6GB",
+    "gpu_count": 3,
+    "cpu_count": 12,
+    "cuda": "10.0.130",
+    "args": [],
+    "state": "running",
+    "jobType": null,
+    "mode": "dryrun",
+    "project": "RLbank",
+    "heartbeatAt": "2020-08-06T03:21:24.830691"
+}
