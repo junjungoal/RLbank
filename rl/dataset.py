@@ -6,7 +6,7 @@ import numpy as np
 class ReplayBuffer:
     """ Replay Buffer. """
 
-    def __init__(self, keys, buffer_size, sample_func, ob_space, ac_space):
+    def __init__(self, buffer_size, sample_func, ob_space, ac_space):
         self._size = buffer_size
 
         # memory management
@@ -15,7 +15,6 @@ class ReplayBuffer:
         self._sample_func = sample_func
 
         # create the buffer to store info
-        self._keys = keys
         self._buffers= defaultdict(list)
         self._obs = {k: [] for k in ob_space.spaces.keys()}
         self._obs_next = {k: [] for k in ob_space.spaces.keys()}

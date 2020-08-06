@@ -28,9 +28,9 @@ def get_agent_by_name(algo):
     if algo == "sac":
         from rl.agents.sac_agent import SACAgent
         return SACAgent
-    # elif algo == "ppo":
-    #     from rl.ppo_agent import PPOAgent
-    #     return PPOAgent
+    elif algo == "td3":
+        from rl.agents.td3_agent import TD3Agent
+        return TD3Agent
     else:
         raise NotImplementedError
 
@@ -149,7 +149,7 @@ class BaseTrainer(object):
             for k, v in ep_info.items():
                 wandb.log({'test_ep/%s' % k: np.mean(v)}, step=step)
             if vids is not None:
-                self.log_videos(vids, 'test_ep/video', step=step)
+                self.log_videos(vids.transpose((0, 1, 4, 2, 3)), 'test_ep/video', step=step)
 
 
     def train(self):
@@ -172,7 +172,7 @@ class BaseTrainer(object):
             if record: frames.append(self._create_frame(env))
             while not done and ep_len < env.max_episode_steps:
                 transition = {}
-                ac, ac_before_activation = self._agent.act(ob)
+                ac, ac_before_activation = self._agent.act(ob, is_train=False)
                 rollout.add({'ob': ob, 'ac': ac, 'ac_before_activation': ac_before_activation})
                 ob, reward, done, info = env.step(ac)
                 rollout.add({'done': done, 'rew': reward, 'ob_next': ob})

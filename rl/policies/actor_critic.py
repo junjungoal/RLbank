@@ -18,6 +18,7 @@ class Actor(nn.Module):
         self._config = config
         self._activation_fn = getattr(F, config.activation)
         self._tanh = tanh_policy
+        self._deterministic= deterministic
 
     @property
     def info(self):

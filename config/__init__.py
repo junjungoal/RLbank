@@ -16,7 +16,7 @@ def argparser():
 
     # training algorithm
     parser.add_argument("--algo", type=str, default="sac",
-                        choices=["sac"])
+                        choices=["sac", "td3"])
     parser.add_argument("--policy", type=str, default="mlp",
                         choices=["mlp"])
 
@@ -53,6 +53,10 @@ def argparser():
     # sac
     parser.add_argument("--reward_scale", type=float, default=1.0, help="reward scale")
     parser.add_argument("--alpha", type=float, default=1.0)
+
+    # td3
+    parser.add_argument("--noise_scale", type=float, default=0.1)
+    parser.add_argument("--noise_clip", type=float, default=0.5)
 
     # ppo
     parser.add_argument("--clip_param", type=float, default=0.2)

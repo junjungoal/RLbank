@@ -93,5 +93,5 @@ if __name__ == '__main__':
         logger.error("Unparsed argument is detected:\n%s", unparsed)
     else:
         if args.debug:
-            args.start_steps = 100
+            args.init_steps = 100
         run(args)
