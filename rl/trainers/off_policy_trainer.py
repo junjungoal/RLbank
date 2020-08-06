@@ -79,14 +79,19 @@ class OffPolicyTrainer(BaseTrainer):
                         ep_info[k].extend(v)
                     else:
                         ep_info[k].append(v)
-                    train_info.update({
-                        'sec': (time() - st_time) / config.log_interval,
-                        'steps_per_sec': (step - st_step) / (time() - st_time),
-                        'update_iter': update_iter
-                    })
-                    st_time = time()
-                    st_step = step
-                    self._log_train(step, train_info, ep_info)
+                train_info.update({
+                    'sec': (time() - st_time) / config.log_interval,
+                    'steps_per_sec': (step - st_step) / (time() - st_time),
+                    'update_iter': update_iter
+                })
+                st_time = time()
+                st_step = step
+                self._log_train(step, train_info, ep_info)
+
+            if episode % config.evaluate_interval == 0:
+                logger.info("Evaluate at %d", update_iter)
+                rollout, info, vids = self._evaluate(step=step, record=config.record)
+                self._log_test(step, info, vids)
 
             if update_iter % config.ckpt_interval == 0 and step > config.start_steps:
                 self._save_ckpt(step, update_iter)
