@@ -25,7 +25,6 @@ class Actor(nn.Module):
 
     def act(self, ob, is_train=True, return_log_prob=False):
         ob = to_tensor(ob, self._config.device)
-        self._ob = ob
         means, stds = self.forward(ob, self._deterministic)
 
         dists = OrderedDict()
@@ -80,7 +79,6 @@ class Actor(nn.Module):
             return actions, activations
 
     def act_log(self, ob, activations=None):
-        self._ob = ob.copy()
         means, stds = self.forward(ob)
 
         dists = OrderedDict()

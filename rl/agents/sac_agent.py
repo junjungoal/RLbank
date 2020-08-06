@@ -46,10 +46,12 @@ class SACAgent(BaseAgent):
         self._critic2_optim = optim.Adam(self._critic2.parameters(), lr=config.lr_critic)
 
         sampler = RandomSampler()
-        buffer_keys = ['ob', 'ac', 'done', 'rew']
+        buffer_keys = ['ob', 'ac', 'done', 'rew', 'ob_next']
         self._buffer = ReplayBuffer(buffer_keys,
                                     config.buffer_size,
-                                    sampler.sample_func)
+                                    sampler.sample_func,
+                                    ob_space,
+                                    ac_space)
 
 
 
@@ -61,6 +63,9 @@ class SACAgent(BaseAgent):
 
     def store_episode(self, rollouts):
         self._buffer.store_episode(rollouts)
+
+    def store_sample(self, rollouts):
+        self._buffer.store_sample(rollouts)
 
     def _network_cuda(self, device):
         self._actor.to(device)

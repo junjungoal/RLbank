@@ -51,7 +51,7 @@ class OffPolicyTrainer(BaseTrainer):
                     ac_before_activation = None
                 rollout.add({'ob': ob, 'ac': ac, 'ac_before_activation': ac_before_activation})
                 ob, reward, done, info = env.step(ac)
-                rollout.add({'done': done, 'rew': reward, 'ob': ob})
+                rollout.add({'done': done, 'rew': reward, 'ob_next': ob})
                 ep_len += 1
                 step += 1
                 ep_rew = reward
@@ -59,10 +59,11 @@ class OffPolicyTrainer(BaseTrainer):
                 pbar.update(1)
 
                 self._agent.store_episode(rollout.get())
-                if step % config.log_interval == 0:
-                    logger.info("Update networks %d", update_iter)
-                train_info = self._agent.train()
-                update_iter += 1
+                if step > config.start_steps:
+                    if step % config.log_interval == 0:
+                        logger.info("Update networks %d", update_iter)
+                    train_info = self._agent.train()
+                    update_iter += 1
 
             ep_info.add({'len': ep_len, 'ep_rew': ep_rew})
             reward_info_dict = reward_info.get_dict(reduction='sum', only_scalar=True)
@@ -73,20 +74,21 @@ class OffPolicyTrainer(BaseTrainer):
             episode += 1
 
             if episode % config.log_interval == 0:
-                if isinstance(v, list):
-                    ep_info[k].extend(v)
-                else:
-                    ep_info[k].append(v)
-                train_info.update({
-                    'sec': (time() - st_time) / config.log_interval,
-                    'steps_per_sec': (step - st_step) / (time() - st_time),
-                    'update_iter': update_iter
-                })
-                st_time = time()
-                st_step = step
-                self._log_train(step, train_info, ep_info)
+                for k, v in ep_info.items():
+                    if isinstance(v, list):
+                        ep_info[k].extend(v)
+                    else:
+                        ep_info[k].append(v)
+                    train_info.update({
+                        'sec': (time() - st_time) / config.log_interval,
+                        'steps_per_sec': (step - st_step) / (time() - st_time),
+                        'update_iter': update_iter
+                    })
+                    st_time = time()
+                    st_step = step
+                    self._log_train(step, train_info, ep_info)
 
-            if update_iter % config.ckpt_interval == 0:
+            if update_iter % config.ckpt_interval == 0 and step > config.start_steps:
                 self._save_ckpt(step, update_iter)
 
 
