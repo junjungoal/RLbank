@@ -8,13 +8,13 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
+from gym import spaces
 
 from rl.dataset import ReplayBuffer, RandomSampler
 from rl.agents.base_agent import BaseAgent
 from util.logger import logger
-
 from util.gym import action_size, observation_size
-from gym import spaces
+from util.pytorch import optimizer_cuda, count_parameters, to_tensor
 
 class SACAgent(BaseAgent):
     def __init__(self, config, ob_space, ac_space,
@@ -24,7 +24,6 @@ class SACAgent(BaseAgent):
         self._ob_space = ob_space
         self._ac_space = ac_space
 
-        self._target_entropy = -action_size(ac_space)
         self._log_alpha = torch.tensor(np.log(config.alpha), requires_grad=True, device=config.device)
         self._alpha_optim = optim.Adam([self._log_alpha], lr=config.lr_actor)
 
@@ -32,6 +31,8 @@ class SACAgent(BaseAgent):
         self._actor = actor(config, ob_space, ac_space, config.tanh_policy)
         self._critic1 = critic(config, ob_space, ac_space)
         self._critic2 = critic(config, ob_space, ac_space)
+
+        self._target_entropy = -action_size(self._actor._ac_space)
 
         # build up target networks
         self._critic1_target = critic(config, ob_space, ac_space)
@@ -57,6 +58,9 @@ class SACAgent(BaseAgent):
         logger.info("The actor has %d parameters".format(count_parameters(self._actor)))
         logger.info('The critic1 has %d parameters', count_parameters(self._critic1))
         logger.info('The critic2 has %d parameters', count_parameters(self._critic2))
+
+    def store_episode(self, rollouts):
+        self._buffer.store_episode(rollouts)
 
     def _network_cuda(self, device):
         self._actor.to(device)
@@ -107,7 +111,7 @@ class SACAgent(BaseAgent):
         return train_info
 
     def act_log(self, o):
-        self._actor.act_log(ob)
+        return self._actor.act_log(o)
 
     def _update_network(self, transitions):
         info = {}
@@ -138,11 +142,11 @@ class SACAgent(BaseAgent):
                                 self._critic2(o, actions_real)).mean()
         info['entropy_alpha'] = alpha.cpu().item()
         info['entropy_loss'] = entropy_loss.cpu().item()
-        info['actor_loss'] += actor_loss.cpu().item()
+        info['actor_loss'] = actor_loss.cpu().item()
         actor_loss += entropy_loss
 
         with torch.no_grad():
-            actions_next, log_pi_next = self.act_log(ob_next)
+            actions_next, log_pi_next = self.act_log(o_next)
             q_next_value1 = self._critic1_target(o_next, actions_next)
             q_next_value2 = self._critic2_target(o_next, actions_next)
             q_next_value = torch.min(q_next_value1, q_next_value2) - alpha * log_pi_next
@@ -154,7 +158,7 @@ class SACAgent(BaseAgent):
         real_q_value1 = self._critic1(o, ac)
         real_q_value2 = self._critic2(o, ac)
         critic1_loss = 0.5 * (target_q_value - real_q_value1).pow(2).mean()
-        critic2_loss = 0.5 * (target_q_value - real_q_value2).pos(2).mean()
+        critic2_loss = 0.5 * (target_q_value - real_q_value2).pow(2).mean()
 
         info['min_target_q'] = target_q_value.min().cpu().item()
         info['target_q'] = target_q_value.mean().cpu().item()

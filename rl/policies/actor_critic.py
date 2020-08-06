@@ -23,7 +23,7 @@ class Actor(nn.Module):
     def info(self):
         return {}
 
-    def act(self, ob, is_train=True, return_log_prob=False, return_stds=False):
+    def act(self, ob, is_train=True, return_log_prob=False):
         ob = to_tensor(ob, self._config.device)
         self._ob = ob
         means, stds = self.forward(ob, self._deterministic)
@@ -76,9 +76,6 @@ class Actor(nn.Module):
 
             log_probs_ = log_probs_.detach().cpu().numpy().squeeze(0)
             return actions, activations, log_probs_
-
-        elif return_stds:
-            return actions, activations, stds
         else:
             return actions, activations
 
@@ -130,15 +127,7 @@ class Actor(nn.Module):
         #     print(log_probs_.min())
         #     import ipdb; ipdb.set_trace()
         if activations is None:
-            if self._config.log_indiv_entropy:
-                entropies = {}
-                for key, space in self._ac_space.spaces.items():
-                    entropies[key] = mixed_dist.distributions[key].entropy()
-                    if isinstance(space, spaces.Discrete):
-                        entropies[key] *= self._config.discrete_ent_coef
-                return actions, log_probs_, entropies
-            else:
-                return actions, log_probs_
+            return actions, log_probs_
         else:
             ents = mixed_dist.entropy()
             return log_probs_, ents

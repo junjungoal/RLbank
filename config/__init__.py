@@ -12,7 +12,7 @@ def argparser():
     # environment
     parser.add_argument("--env", type=str, default="Reacher-v2",
                         help="Environment name")
-    parser.add_argument("--max_episode_step", type=str, default=200)
+    parser.add_argument("--max_episode_steps", type=str, default=200)
 
     # training algorithm
     parser.add_argument("--algo", type=str, default="sac",
@@ -63,10 +63,10 @@ def argparser():
     parser.add_argument("--gae_lambda", type=float, default=0.95)
 
     # log
-    parser.add_argument("--log_interval", type=int, default=1)
+    parser.add_argument("--log_interval", type=int, default=100)
     parser.add_argument("--evaluate_interval", type=int, default=100)
     parser.add_argument("--ckpt_interval", type=int, default=200)
-    parser.add_argument("--log_root_dir", type=str, default="log")
+    parser.add_argument("--log_root_dir", type=str, default="logs")
     parser.add_argument('--wandb', type=str2bool, default=False,
                         help="set it True if you want to use wandb")
     parser.add_argument("--entity", type=str, default="")

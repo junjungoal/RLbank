@@ -26,40 +26,26 @@ class MlpActor(Actor):
         self.fc_means = nn.ModuleDict()
         self.fc_log_stds = nn.ModuleDict()
 
-        k = 'default'
-        if isinstance(ac_space, spaces.Dict):
-            for k, space in ac_space.spaces.items():
-                if isinstance(space, spaces.Box):
-                    self.fc_means.update({k: MLP(config, rl_hid_size, action_size(space), activation=activation)})
-                    if not self._deterministic:
-                        if config.algo == 'ppo':
-                            self.fc_log_stds.update({k: AddBias(torch.zeros(action_size(space)))})
-                        else:
-                            self.fc_log_stds.update({k: MLP(config, rl_hid_size, action_size(space), activation=activation, bias=self._bias)})
-                elif isinstance(space, spaces.Discrete):
-                    self.fc_means.update({k: MLP(config, rl_hid_size, space.n, activation=activation)})
-                else:
-                    self.fc_means.update({k: MLP(config, rl_hid_size, space, activation=activation)})
-        elif isinstance(ac_space, spaces.Box):
-            self.fc_means.update({k: MLP(config, rl_hid_size, action_size(ac_space), activation=activation)})
-            if not self._deterministic:
-                if config.algo == 'ppo':
-                    self.fc_log_stds.update({k: AddBias(torch.zeros(action_size(ac_space)))})
-                else:
-                    self.fc_log_stds.update({k: MLP(config, rl_hid_size, action_size(ac_space), activation=activation, bias=self._bias)})
-        elif isinstance(ac_space, spaces.Discrete):
-            self.fc_means.update({k: MLP(config, rl_hid_size, ac_space.n, activation=activation)})
-        else:
-            self.fc_means.update({k: MLP(config, rl_hid_size, ac_space, activation=activation)})
-
-
+        for k, space in ac_space.spaces.items():
+            if isinstance(space, spaces.Box):
+                self.fc_means.update({k: MLP(config, rl_hid_size, action_size(space), activation=activation)})
+                if not self._deterministic:
+                    if config.algo == 'ppo':
+                        self.fc_log_stds.update({k: AddBias(torch.zeros(action_size(space)))})
+                    else:
+                        self.fc_log_stds.update({k: MLP(config, rl_hid_size, action_size(space), activation=activation, bias=self._bias)})
+            elif isinstance(space, spaces.Discrete):
+                self.fc_means.update({k: MLP(config, rl_hid_size, space.n, activation=activation)})
+            else:
+                self.fc_means.update({k: MLP(config, rl_hid_size, space, activation=activation)})
 
     def forward(self, ob, deterministic=False):
         inp = list(ob.values())
         if len(inp[0].shape) == 1:
             inp = [x.unsqueeze(0) for x in inp]
+        inp = torch.cat(inp, dim=-1)
 
-        out = self._activation_fn(self.fc(torch.cat(inp, dim=-1)))
+        out = self._activation_fn(self.fc(inp))
         out = torch.reshape(out, (out.shape[0], -1))
 
         means, stds = OrderedDict(), OrderedDict()
@@ -98,13 +84,15 @@ class MlpCritic(Critic):
         inp = list(ob.values())
         if len(inp[0].shape) == 1:
             inp = [x.unsqueeze(0) for x in inp]
+
         if ac is not None:
             ac = list(ac.values())
             if len(ac[0].shape) == 1:
                 ac = [x.unsqueeze(0) for x in ac]
             inp.extend(ac)
 
-        out = self.fc(torch.cat(inp, dim=-1))
+        inp = torch.cat(inp, dim=-1)
+        out = self.fc(inp)
         out = torch.reshape(out, (out.shape[0], 1))
 
         return out

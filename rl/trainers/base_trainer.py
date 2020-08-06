@@ -12,11 +12,13 @@ import moviepy.editor as mpy
 from tqdm import tqdm, trange
 import gym
 from gym import envs
-from gym.wrappers import TimeLimit
+from gym import spaces, error
+# from gym.wrappers import TimeLimit
 
 from rl.policies import get_actor_critic_by_name
 from util.pytorch import get_ckpt_path, count_parameters, to_tensor
 from util.logger import logger
+from env.base import EnvWrapper
 
 def get_agent_by_name(algo):
     if algo == "sac":
@@ -35,15 +37,15 @@ class BaseTrainer(object):
         all_envs = envs.registry.all()
         env_ids = [env_spec.id for env_spec in all_envs]
         if config.env in env_ids:
-            self._env = TimeLimit(gym.make(config.env), config.max_episode_step)
+            self._env = EnvWrapper(gym.make(config.env), config)
         else:
             self._env = gym.make(config.env, **config.__dict__)
 
         # get actor and critic networks
         actor, critic = get_actor_critic_by_name(config.policy)
 
-        ob_space = self._env.observation_space
         ac_space = self._env.action_space
+        ob_space = self._env.observation_space
 
         # build up networks
         self._agent = get_agent_by_name(config.algo)(

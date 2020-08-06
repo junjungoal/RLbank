@@ -34,13 +34,15 @@ class OffPolicyTrainer(BaseTrainer):
         ep_info = defaultdict(list)
 
         env = self._env
+        rollout = Rollout()
+        episode = 0
         while step < config.max_global_step:
             ob = env.reset()
             done = False
             ep_len = 0
             reward_info = Info()
             ep_info = Info()
-            while not done and ep_len < config.max_episode_step:
+            while not done and ep_len < env.max_episode_steps:
                 transition = {}
                 if step < config.start_steps:
                     ac, ac_before_activation = self._agent.act(ob)
@@ -56,7 +58,7 @@ class OffPolicyTrainer(BaseTrainer):
                 reward_info.add(info)
                 pbar.update(1)
 
-                self.agent.store_episode(rollout.get())
+                self._agent.store_episode(rollout.get())
                 if step % config.log_interval == 0:
                     logger.info("Update networks %d", update_iter)
                 train_info = self._agent.train()
