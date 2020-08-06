@@ -31,7 +31,7 @@ class DDPGAgent(BaseAgent):
         self._actor_target.load_state_dict(self._actor.state_dict())
         self._critic = critic(config, ob_space, ac_space)
         self._critic_target = critic(config, ob_space, ac_space)
-        self._critic_target.load_state_dict(self._critic1.state_dict())
+        self._critic_target.load_state_dict(self._critic.state_dict())
 
         self._network_cuda(config.device)
 
@@ -154,7 +154,7 @@ class DDPGAgent(BaseAgent):
 
         # update the critics
         self._critic_optim.zero_grad()
-        critic1_loss.backward()
+        critic_loss.backward()
         self._critic_optim.step()
 
         return info

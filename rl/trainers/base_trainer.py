@@ -31,6 +31,9 @@ def get_agent_by_name(algo):
     elif algo == "td3":
         from rl.agents.td3_agent import TD3Agent
         return TD3Agent
+    elif algo == 'ddpg':
+        from rl.agents.ddpg_agent import DDPGAgent
+        return DDPGAgent
     else:
         raise NotImplementedError
 
