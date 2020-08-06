@@ -149,7 +149,7 @@ class BaseTrainer(object):
             for k, v in ep_info.items():
                 wandb.log({'test_ep/%s' % k: np.mean(v)}, step=step)
             if vids is not None:
-                self.log_videos(vids.transpose((0, 1, 4, 2, 3)), 'test_ep/video', step=step)
+                self.log_videos(vids, 'test_ep/video', step=step)
 
 
     def train(self):
