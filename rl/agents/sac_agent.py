@@ -134,6 +134,7 @@ class SACAgent(BaseAgent):
             actions_next, log_pi_next = self.act_log(o_next)
             q_next_value1 = self._critic1_target(o_next, actions_next)
             q_next_value2 = self._critic2_target(o_next, actions_next)
+            alpha = self._log_alpha.exp()
             q_next_value = torch.min(q_next_value1, q_next_value2) - alpha * log_pi_next
             target_q_value = rew * self._config.reward_scale + \
                 (1-done)  * self._config.discount_factor * q_next_value

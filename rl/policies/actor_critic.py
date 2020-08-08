@@ -66,7 +66,6 @@ class Actor(nn.Module):
             else:
                 action = z
             actions[k] = action.detach().cpu().numpy().squeeze(0)
-            activations[k] = z.detach().cpu().numpy().squeeze(0)
 
         if return_log_prob:
             log_probs_ = torch.cat(list(log_probs.values()), -1).sum(-1, keepdim=True)
