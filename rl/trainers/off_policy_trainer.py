@@ -61,7 +61,7 @@ class OffPolicyTrainer(BaseTrainer):
                 ep_rew += reward
                 reward_info.add(info)
                 rollout.add({'done': done, 'rew': reward, 'ob_next': ob})
-                self._agent.store_episode(rollout.get())
+                self._agent.store_sample(rollout.get())
                 init_step += 1
 
                 if init_step > config.init_steps:
@@ -86,11 +86,6 @@ class OffPolicyTrainer(BaseTrainer):
                 ep_info = ep_info.get_dict(only_scalar=True)
 
                 if episode % config.log_interval == 0:
-                    # for k, v in ep_info.items():
-                    #     if isinstance(v, list):
-                    #         ep_info[k].extend(v)
-                    #     else:
-                    #         ep_info[k].append(v)
                     train_info.update({
                         'sec': (time() - st_time) / config.log_interval,
                         'steps_per_sec': (step - st_step) / (time() - st_time),
@@ -109,6 +104,3 @@ class OffPolicyTrainer(BaseTrainer):
                     self._save_ckpt(step, update_iter)
 
 
-
-    def evaluate(self):
-        raise NotImplementedError

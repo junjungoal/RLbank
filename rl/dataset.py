@@ -17,16 +17,29 @@ class ReplayBuffer:
 
         # create the buffer to store info
         self._buffers= defaultdict(list)
-        self._obs = {k: np.zeros((buffer_size, observation_size(ob_space[k]))) for k in ob_space.spaces.keys()}
-        self._obs_next = {k: np.zeros((buffer_size, observation_size(ob_space[k]))) for k in ob_space.spaces.keys()}
-        self._actions = {k: np.zeros((buffer_size, action_size(ac_space[k]))) for k in ac_space.spaces.keys()}
-        self._rewards = np.zeros((buffer_size, 1))
-        self._terminals = np.zeros((buffer_size, 1))
+        self._obs = {k: np.empty((buffer_size, observation_size(ob_space[k]))) for k in ob_space.spaces.keys()}
+        self._obs_next = {k: np.empty((buffer_size, observation_size(ob_space[k]))) for k in ob_space.spaces.keys()}
+        self._actions = {k: np.empty((buffer_size, action_size(ac_space[k]))) for k in ac_space.spaces.keys()}
+        self._rewards = np.empty((buffer_size, 1))
+        self._terminals = np.empty((buffer_size, 1))
 
     def clear(self):
         self._idx = 0
         self._current_size = 0
         self._buffers = defaultdict(list)
+
+    def store_sample(self, rollout):
+        for k in self._obs.keys():
+            self._obs[k][self._idx] = rollout['ob'][0][k]
+            self._obs_next[k][self._idx] = rollout['ob_next'][0][k]
+        for k in self._actions.keys():
+            self._actions[k][self._idx] = rollout['ac'][0][k]
+        self._rewards[self._idx] = rollout['rew'][0]
+        self._terminals[self._idx] = rollout['done'][0]
+
+        idx = self._idx = (self._idx + 1) % self._size
+        if self._current_size < self._size:
+            self._current_size += 1
 
     def store_episode(self, rollout):
         """ Stores the episode. """
