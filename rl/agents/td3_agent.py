@@ -61,6 +61,9 @@ class TD3Agent(BaseAgent):
     def store_episode(self, rollouts):
         self._buffer.store_episode(rollouts)
 
+    def store_sample(self, rollouts):
+        self._buffer.store_sample(rollouts)
+
     def state_dict(self):
         return {
             'actor_state_dict': self._actor.state_dict(),
