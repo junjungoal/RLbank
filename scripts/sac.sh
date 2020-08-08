@@ -2,7 +2,7 @@
 gpu=$1
 seed=$2
 algo='sac'
-prefix="SAC.v2"
+prefix="SAC.v3"
 # env="Reacher-v2"
 env="Hopper-v2"
 debug="False"

@@ -129,6 +129,22 @@ class SACAgent(BaseAgent):
 
         done = _to_tensor(transitions['done']).reshape(bs, 1)
         rew = _to_tensor(transitions['rew']).reshape(bs, 1)
+        # update alpha
+        actions_real, log_pi = self.act_log(o)
+        alpha_loss = -(self._log_alpha * (log_pi + self._target_entropy).detach()).mean()
+        self._alpha_optim.zero_grad()
+        alpha_loss.backward()
+        self._alpha_optim.step()
+        alpha = self._log_alpha.exp()
+
+        # actor loss
+        entropy_loss = (alpha * log_pi).mean()
+        actor_loss = -torch.min(self._critic1(o, actions_real),
+                                self._critic2(o, actions_real)).mean()
+        info['entropy_alpha'] = alpha.cpu().item()
+        info['entropy_loss'] = entropy_loss.cpu().item()
+        info['actor_loss'] = actor_loss.cpu().item()
+        actor_loss += entropy_loss
 
         with torch.no_grad():
             actions_next, log_pi_next = self.act_log(o_next)
@@ -155,6 +171,11 @@ class SACAgent(BaseAgent):
         info['critic1_loss'] = critic1_loss.cpu().item()
         info['critic2_loss'] = critic2_loss.cpu().item()
 
+        # update the actor
+        self._actor_optim.zero_grad()
+        actor_loss.backward()
+        self._actor_optim.step()
+
         # update the critic
         self._critic1_optim.zero_grad()
         critic1_loss.backward()
@@ -164,27 +185,6 @@ class SACAgent(BaseAgent):
         critic2_loss.backward()
         self._critic2_optim.step()
 
-        # update alpha
-        actions_real, log_pi = self.act_log(o)
-        alpha_loss = -(self._log_alpha * (log_pi + self._target_entropy).detach()).mean()
-        self._alpha_optim.zero_grad()
-        alpha_loss.backward()
-        self._alpha_optim.step()
-        alpha = self._log_alpha.exp()
-
-        # actor loss
-        entropy_loss = (alpha * log_pi).mean()
-        actor_loss = -torch.min(self._critic1(o, actions_real),
-                                self._critic2(o, actions_real)).mean()
-        info['entropy_alpha'] = alpha.cpu().item()
-        info['entropy_loss'] = entropy_loss.cpu().item()
-        info['actor_loss'] = actor_loss.cpu().item()
-        actor_loss += entropy_loss
-
-        # update the actor
-        self._actor_optim.zero_grad()
-        actor_loss.backward()
-        self._actor_optim.step()
 
         return info
 
