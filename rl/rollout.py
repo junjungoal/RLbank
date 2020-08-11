@@ -24,5 +24,6 @@ class Rollout(object):
         batch['done'] = self._history['done']
         batch['rew'] = self._history['rew']
         batch['ob_next'] = self._history['ob_next']
+        batch['vpred'] = self._history['vpred']
         self._history = defaultdict(list)
         return batch

@@ -1,32 +1,38 @@
-""" VecEnv from https://github.com/openai/baselines/blob/master/baselines/common/vec_env/vec_env.py """
-
-import contextlib
+"""https://github.com/hill-a/stable-baselines/blob/master/stable_baselines/common/vec_env/base_vec_env.py""" 
 import os
 from abc import ABC, abstractmethod
+import inspect
+import pickle
+import contextlib
+from collections import OrderedDict
 
+import cloudpickle
 import numpy as np
-
+import gym
 
 def tile_images(img_nhwc):
     """
     Tile N images into one big PxQ image
     (P,Q) are chosen to be as close as possible, and if N
     is square, then P=Q.
-    input: img_nhwc, list or array of images, ndim=4 once turned into array
+    :param img_nhwc: (list) list or array of images, ndim=4 once turned into array. img nhwc
         n = batch index, h = height, w = width, c = channel
-    returns:
-        bigim_HWc, ndarray with ndim=3
+    :return: (numpy float) img_HWc, ndim=3
     """
     img_nhwc = np.asarray(img_nhwc)
-    N, h, w, c = img_nhwc.shape
-    H = int(np.ceil(np.sqrt(N)))
-    W = int(np.ceil(float(N)/H))
-    img_nhwc = np.array(list(img_nhwc) + [img_nhwc[0]*0 for _ in range(N, H*W)])
-    img_HWhwc = img_nhwc.reshape(H, W, h, w, c)
-    img_HhWwc = img_HWhwc.transpose(0, 2, 1, 3, 4)
-    img_Hh_Ww_c = img_HhWwc.reshape(H*h, W*w, c)
-    return img_Hh_Ww_c
-
+    n_images, height, width, n_channels = img_nhwc.shape
+    # new_height was named H before
+    new_height = int(np.ceil(np.sqrt(n_images)))
+    # new_width was named W before
+    new_width = int(np.ceil(float(n_images) / new_height))
+    img_nhwc = np.array(list(img_nhwc) + [img_nhwc[0] * 0 for _ in range(n_images, new_height * new_width)])
+    # img_HWhwc
+    out_image = img_nhwc.reshape(new_height, new_width, height, width, n_channels)
+    # img_HhWwc
+    out_image = out_image.transpose(0, 2, 1, 3, 4)
+    # img_Hh_Ww_c
+    out_image = out_image.reshape(new_height * height, new_width * width, n_channels)
+    return out_image
 
 class AlreadySteppingError(Exception):
     """
@@ -48,7 +54,6 @@ class NotSteppingError(Exception):
     def __init__(self):
         msg = 'not running an async step'
         Exception.__init__(self, msg)
-
 
 class VecEnv(ABC):
     """
@@ -157,7 +162,6 @@ class VecEnv(ABC):
             self.viewer = rendering.SimpleImageViewer()
         return self.viewer
 
-
 class VecEnvWrapper(VecEnv):
     """
     An environment wrapper that applies to an entire batch
@@ -208,7 +212,6 @@ class VecEnvObservationWrapper(VecEnvWrapper):
         obs, rews, dones, infos = self.venv.step_wait()
         return self.process(obs), rews, dones, infos
 
-
 class CloudpickleWrapper(object):
     """
     Uses cloudpickle to serialize contents (otherwise multiprocessing tries to use pickle)
@@ -242,4 +245,56 @@ def clear_mpi_env_vars():
     try:
         yield
     finally:
-        os.environ.update(removed_environment) 
+        os.environ.update(removed_environment)
+
+def copy_obs_dict(obs):
+    """
+    Deep-copy an observation dict.
+    """
+    return {k: np.copy(v) for k, v in obs.items()}
+
+
+def dict_to_obs(obs_dict):
+    """
+    Convert an observation dict into a raw array if the
+    original observation space was not a Dict space.
+    """
+    if set(obs_dict.keys()) == {None}:
+        return obs_dict[None]
+    return obs_dict
+
+
+def obs_space_info(obs_space):
+    """
+    Get dict-structured information about a gym.Space.
+    Returns:
+      A tuple (keys, shapes, dtypes):
+        keys: a list of dict keys.
+        shapes: a dict mapping keys to shapes.
+        dtypes: a dict mapping keys to dtypes.
+    """
+    if isinstance(obs_space, gym.spaces.Dict):
+        assert isinstance(obs_space.spaces, OrderedDict)
+        subspaces = obs_space.spaces
+    elif isinstance(obs_space, gym.spaces.Tuple):
+        assert isinstance(obs_space.spaces, tuple)
+        subspaces = {i: obs_space.spaces[i] for i in range(len(obs_space.spaces))}
+    else:
+        subspaces = {None: obs_space}
+    keys = []
+    shapes = {}
+    dtypes = {}
+    for key, box in subspaces.items():
+        keys.append(key)
+        shapes[key] = box.shape
+        dtypes[key] = box.dtype
+    return keys, shapes, dtypes
+
+
+def obs_to_dict(obs):
+    """
+    Convert an observation into a dict.
+    """
+    if isinstance(obs, dict):
+        return obs
+    return {None: obs}

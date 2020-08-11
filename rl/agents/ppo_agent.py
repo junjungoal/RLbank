@@ -5,12 +5,11 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 
-from rl.dataset import ReplayBuffer, RandomSampler
-from rl.base_agent import BaseAgent
-from rl.planner_agent import PlannerAgent
+from rl.dataset import ReplayBuffer, RandomSampler, MultiProcessReplayBuffer
+from rl.agents.base_agent import BaseAgent
 from util.logger import logger
 from util.pytorch import optimizer_cuda, count_parameters, \
-    obs2tensor, to_tensor
+    obs2tensor, to_tensor, list2dict
 
 
 class PPOAgent(BaseAgent):
@@ -29,9 +28,11 @@ class PPOAgent(BaseAgent):
         self._critic_optim = optim.Adam(self._critic.parameters(), lr=config.lr_critic)
 
         sampler = RandomSampler()
-        self._buffer = ReplayBuffer(['ob', 'ac', 'done', 'rew', 'ret', 'adv', 'ac_before_activation'],
-                                    config.buffer_size,
-                                    sampler.sample_func)
+        # self._buffer = ReplayBuffer(['ob', 'ac', 'done', 'rew', 'ret', 'adv', 'ac_before_activation'],
+        self._buffer = MultiProcessReplayBuffer(config.rollout_length,
+                                    config.num_processes,
+                                    sampler.sample_func,
+                                    ob_space, ac_space)
 
 
         logger.info('Creating a PPO agent')
@@ -42,18 +43,27 @@ class PPOAgent(BaseAgent):
         self._compute_gae(rollouts)
         self._buffer.store_episode(rollouts)
 
+    def store_sample(self, rollout):
+        self._buffer.store_sample(rollout)
+
     def _compute_gae(self, rollouts):
         """ Computes GAE from @rollouts. """
+        config = self._config
         T = len(rollouts['done'])
-        ob = rollouts['ob']
-        ob = self.normalize(ob)
-        ob = obs2tensor(ob, self._config.device)
-        vpred = self._critic(ob).detach().cpu().numpy()[:,0]
+        # ob = rollouts['ob']
+        # ob = obs2tensor(ob, config.device)
+        # _to_tensor = lambda x: to_tensor(x, self._config.device)
+        # if isinstance(ob, list):
+        #     ob = list2dict(ob)
+        # ob = OrderedDict([
+        #     (k, torch.tensor(np.stack(v).reshape((config.batch_size*config.num_processes, -1)), dtype=torch.float32).to(config.device)) for k, v in ob.items()
+        # ])
+        vpred = np.array(rollouts['vpred']).squeeze(-1)
         assert len(vpred) == T + 1
 
         done = rollouts['done']
         rew = rollouts['rew']
-        adv = np.empty((T, ) , 'float32')
+        adv = np.empty((T, config.num_processes) , 'float32')
         lastgaelam = 0
         for t in reversed(range(T)):
             nonterminal = 1 - done[t]
@@ -67,10 +77,10 @@ class PPOAgent(BaseAgent):
 
         # update rollouts
         if adv.std() == 0:
-            rollouts['adv'] = (adv * 0).tolist()
+            rollouts['adv'] = (adv * 0)
         else:
-            rollouts['adv'] = ((adv - adv.mean()) / adv.std()).tolist()
-        rollouts['ret'] = ret.tolist()
+            rollouts['adv'] = ((adv - adv.mean()) / adv.std())
+        rollouts['ret'] = ret
 
     def state_dict(self):
         return {
@@ -137,8 +147,8 @@ class PPOAgent(BaseAgent):
 
         if not np.isfinite(ratio.cpu().detach()).all() or not np.isfinite(adv.cpu().detach()).all():
             import ipdb; ipdb.set_trace()
-        info['entropy_loss{}'.format(self._postfix)] = entropy_loss.cpu().item()
-        info['actor_loss{}'.format(self._postfix)] = actor_loss.cpu().item()
+        info['entropy_loss'] = entropy_loss.cpu().item()
+        info['actor_loss'] = actor_loss.cpu().item()
         actor_loss += entropy_loss
 
         # the q loss

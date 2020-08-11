@@ -141,7 +141,7 @@ class BaseEnv(gym.Env):
         if isinstance(action, list):
             action = {key: val for ac_i in action for key, val in ac_i.items()}
         if isinstance(action, dict):
-            action = np.concatenate([action[key] for key in self.action_space.shape.keys() if key in action])
+            action = np.concatenate([action[key] for key in self.action_space.spaces.keys() if key in action])
         ob, reward, done, info = self._step(action)
         done, info, penalty = self._after_step(reward, done, info)
         return ob, reward + penalty, done, info

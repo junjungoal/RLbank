@@ -9,6 +9,7 @@ from six.moves import shlex_quote
 
 from config import argparser
 from rl.trainers.off_policy_trainer import OffPolicyTrainer
+from rl.trainers.on_policy_trainer import OnPolicyTrainer
 from util.logger import logger
 
 
@@ -41,7 +42,10 @@ def run(config):
         config.device = torch.device("cpu")
 
     # build a trainer
-    trainer = OffPolicyTrainer(config)
+    if config.algo == 'ppo':
+        trainer = OnPolicyTrainer(config)
+    else:
+        trainer = OffPolicyTrainer(config)
     if config.is_train:
         trainer.train()
         logger.info("Finish training")

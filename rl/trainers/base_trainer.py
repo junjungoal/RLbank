@@ -23,6 +23,7 @@ from util.logger import logger
 from env.base import EnvWrapper
 from rl.rollout import Rollout
 from util.info import Info
+from env.vec_env import make_vec_envs
 
 def get_agent_by_name(algo):
     if algo == "sac":
@@ -34,6 +35,9 @@ def get_agent_by_name(algo):
     elif algo == 'ddpg':
         from rl.agents.ddpg_agent import DDPGAgent
         return DDPGAgent
+    elif algo == 'ppo':
+        from rl.agents.ppo_agent import PPOAgent
+        return PPOAgent
     else:
         raise NotImplementedError
 
@@ -44,8 +48,13 @@ class BaseTrainer(object):
         all_envs = envs.registry.all()
         env_ids = [env_spec.id for env_spec in all_envs]
         if config.env in env_ids:
-            self._env = EnvWrapper(gym.make(config.env), config)
-            self._env_eval = EnvWrapper(gym.make(config.env), copy.copy(config))
+            wrapper = EnvWrapper if not config.multiprocessing else make_vec_envs
+            if config.multiprocessing:
+                self._env = make_vec_envs(config.env, **config.__dict__)
+                self._env_eval = make_vec_envs(config.env, **copy.copy(config).__dict__)
+            else:
+                self._env = EnvWrapper(gym.make(config.env), config)
+                self._env_eval = EnvWrapper(gym.make(config.env), copy.copy(config))
         else:
             self._env = gym.make(config.env, **config.__dict__)
             self._env_eval = gym.make(config.env, **copy.copy(config).__dict__)

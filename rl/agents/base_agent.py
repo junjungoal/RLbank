@@ -1,12 +1,19 @@
 from collections import OrderedDict
+from util.pytorch import to_tensor
 
 class BaseAgent(object):
     def __init__(self, config, ob_space):
         self._config = config
 
-    def act(self, ob, is_train=True):
+    def act(self, ob, is_train=True, pred_value=False):
         ac, activation = self._actor.act(ob, is_train=is_train)
+        if pred_value:
+            return ac, activation, self._critic(to_tensor(ob, self._config.device)).detach().cpu().numpy()
         return ac, activation
+
+    def value(self, ob):
+        return self._critic(to_tensor(ob, self._config.device)).detach().cpu().numpy()
+
 
     def store_episode(self, rollouts):
         raise NotImplementedError()

@@ -32,7 +32,6 @@ class OnPolicyTrainer(BaseTrainer):
 
         logger.info("Start training at step=%d", step)
         pbar = tqdm(initial=step, total=config.max_global_step, desc=config.run_name)
-        ep_info = defaultdict(list)
 
         env = self._env
         rollout = Rollout()
@@ -46,61 +45,51 @@ class OnPolicyTrainer(BaseTrainer):
             done = False
             ep_len = 0
             ep_rew = 0
-            reward_info = Info()
-            ep_info = Info()
+            reward_infos = [Info() for _ in range(config.num_processes)]
+            ep_info = [Info() for _ in range(config.num_processes)]
             train_info = {}
-            while not done and ep_len < env.max_episode_steps:
+            for _ in range(config.rollout_length):
                 transition = {}
-                if init_step > config.init_steps:
-                    ac, ac_before_activation = self._agent.act(ob)
-                else:
-                    ac = env.action_space.sample()
-                    ac_before_activation = None
-                rollout.add({'ob': ob, 'ac': ac, 'ac_before_activation': ac_before_activation})
-                ob, reward, done, info = env.step(ac)
+                ac, ac_before_activation, vpred = self._agent.act(ob, pred_value=True)
+                rollout.add({'ob': ob, 'ac': ac, 'ac_before_activation': ac_before_activation, 'vpred': vpred})
+                ob, reward, dones, infos = env.step(ac)
                 ep_rew += reward
-                reward_info.add(info)
+                for i, (info, done) in enumerate(zip(infos, dones)):
+                    reward_infos[i].add(info)
+                    if done:
+                        reward_info_dict = reward_info[i].get_dict(reduction='sum', only_scalar=True)
+                        ep_info[i].add(reward_info_dict)
                 rollout.add({'done': done, 'rew': reward, 'ob_next': ob})
-                self._agent.store_sample(rollout.get())
-                init_step += 1
 
-                if init_step > config.init_steps:
-                    ep_len += 1
-                    step += 1
-                    pbar.update(1)
-                    if step % config.log_interval == 0:
-                        logger.info("Update networks %d", update_iter)
-                    train_info = self._agent.train()
-                    update_iter += 1
+                ep_len += 1
+                step += 1
 
-            init_episode += 1
-            ep_info.add({'len': ep_len, 'ep_rew': ep_rew})
-            reward_info_dict = reward_info.get_dict(reduction='sum', only_scalar=True)
-            ep_info.add(reward_info_dict)
-            logger.info("Ep %d rollout: %s", episode if init_step > config.init_steps else init_episode,
-                        {k: v for k, v in reward_info_dict.items()
-                         if np.isscalar(v)})
+            vpred = self._agent.value(ob)
+            rollout.add({'vpred': vpred})
+            self._agent.store_episode(rollout.get())
+            pbar.update(1)
+            if step % config.log_interval == 0:
+                logger.info("Update networks %d", update_iter)
+            train_info = self._agent.train()
+            update_iter += 1
+            # ep_info = ep_info.get_dict(only_scalar=True)
 
-            if init_step > config.init_steps:
-                episode += 1
-                ep_info = ep_info.get_dict(only_scalar=True)
-
-                if episode % config.log_interval == 0:
-                    train_info.update({
-                        'sec': (time() - st_time) / config.log_interval,
-                        'steps_per_sec': (step - st_step) / (time() - st_time),
-                        'update_iter': update_iter
-                    })
-                    st_time = time()
-                    st_step = step
-                    self._log_train(step, train_info, ep_info)
-
-                if episode % config.evaluate_interval == 0:
-                    logger.info("Evaluate at %d", update_iter)
-                    rollout, info, vids = self._evaluate(step=step, record=config.record)
-                    self._log_test(step, info, vids)
-
-                if update_iter % config.ckpt_interval == 0 and init_step > config.init_steps:
-                    self._save_ckpt(step, update_iter)
-
-
+            # if episode % config.log_interval == 0:
+            #     train_info.update({
+            #         'sec': (time() - st_time) / config.log_interval,
+            #         'steps_per_sec': (step - st_step) / (time() - st_time),
+            #         'update_iter': update_iter
+            #     })
+            #     st_time = time()
+            #     st_step = step
+            #     self._log_train(step, train_info, ep_info)
+            #
+            # if episode % config.evaluate_interval == 0:
+            #     logger.info("Evaluate at %d", update_iter)
+            #     rollout, info, vids = self._evaluate(step=step, record=config.record)
+            #     self._log_test(step, info, vids)
+            #
+            # if update_iter % config.ckpt_interval == 0 and init_step > config.init_steps:
+            #     self._save_ckpt(step, update_iter)
+            #
+            #

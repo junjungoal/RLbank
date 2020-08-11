@@ -65,7 +65,10 @@ class Actor(nn.Module):
                     log_probs[k] = log_probs[k] - log_det_jacobian
             else:
                 action = z
-            actions[k] = action.detach().cpu().numpy().squeeze(0)
+            if action.shape[0] == 1:
+                actions[k] = action.detach().cpu().numpy().squeeze(0)
+            else:
+                actions[k] = action.detach().cpu().numpy()
 
         if return_log_prob:
             log_probs_ = torch.cat(list(log_probs.values()), -1).sum(-1, keepdim=True)
