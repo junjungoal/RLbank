@@ -51,7 +51,7 @@ class BaseTrainer(object):
             wrapper = EnvWrapper if not config.multiprocessing else make_vec_envs
             if config.multiprocessing:
                 self._env = make_vec_envs(config.env, **config.__dict__)
-                self._env_eval = make_vec_envs(config.env, **copy.copy(config).__dict__)
+                self._env_eval = EnvWrapper(gym.make(config.env), copy.copy(config))
             else:
                 self._env = EnvWrapper(gym.make(config.env), config)
                 self._env_eval = EnvWrapper(gym.make(config.env), copy.copy(config))

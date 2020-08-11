@@ -97,7 +97,7 @@ class OffPolicyTrainer(BaseTrainer):
 
                 if episode % config.evaluate_interval == 0:
                     logger.info("Evaluate at %d", update_iter)
-                    rollout, info, vids = self._evaluate(step=step, record=config.record)
+                    _, info, vids = self._evaluate(step=step, record=config.record)
                     self._log_test(step, info, vids)
 
                 if update_iter % config.ckpt_interval == 0 and init_step > config.init_steps:
