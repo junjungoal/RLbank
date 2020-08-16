@@ -50,14 +50,6 @@ class PPOAgent(BaseAgent):
         """ Computes GAE from @rollouts. """
         config = self._config
         T = len(rollouts['done'])
-        # ob = rollouts['ob']
-        # ob = obs2tensor(ob, config.device)
-        # _to_tensor = lambda x: to_tensor(x, self._config.device)
-        # if isinstance(ob, list):
-        #     ob = list2dict(ob)
-        # ob = OrderedDict([
-        #     (k, torch.tensor(np.stack(v).reshape((config.batch_size*config.num_processes, -1)), dtype=torch.float32).to(config.device)) for k, v in ob.items()
-        # ])
         vpred = np.array(rollouts['vpred']).squeeze(-1)
         assert len(vpred) == T + 1
 
@@ -109,10 +101,10 @@ class PPOAgent(BaseAgent):
 
     def train(self):
         self._soft_update_target_network(self._old_actor, self._actor, 0.0)
-
-        for _ in range(self._config.num_batches):
-            transitions = self._buffer.sample(self._config.batch_size)
-            train_info = self._update_network(transitions)
+        for _ in range(self._config.ppo_epoch):
+            generator = self._buffer.generator(self._config.batch_size)
+            for transitions in generator:
+                train_info = self._update_network(transitions)
 
         self._buffer.clear()
 
@@ -131,9 +123,11 @@ class PPOAgent(BaseAgent):
         a_z = _to_tensor(transitions['ac_before_activation'])
         ret = _to_tensor(transitions['ret']).reshape(bs, 1)
         adv = _to_tensor(transitions['adv']).reshape(bs, 1)
+        vpred = _to_tensor(transitions['vpred']).reshape(bs, 1)
+        old_log_pi = _to_tensor(transitions['log_prob']).reshape(bs, 1)
 
         log_pi, ent = self._actor.act_log(o, a_z)
-        old_log_pi, _ = self._old_actor.act_log(o, a_z)
+        # old_log_pi, _ = self._old_actor.act_log(o, a_z)
         # if old_log_pi.min() < -100:
         #     import ipdb; ipdb.set_trace()
 
@@ -153,7 +147,12 @@ class PPOAgent(BaseAgent):
 
         # the q loss
         value_pred = self._critic(o)
-        value_loss = self._config.value_loss_coeff * (ret - value_pred).pow(2).mean()
+        value_pred_clipped = vpred + (value_pred - vpred).clamp(-self._config.clip_param, self._config.clip_param)
+        value_loss = (value_pred-ret).pow(2)
+        value_loss_clipped = (value_pred_clipped-ret).pow(2)
+        value_loss = self._config.value_loss_coeff * torch.max(value_loss, value_loss_clipped).mean()
+
+        # value_loss = self._config.value_loss_coeff * (ret - value_pred).pow(2).mean()
 
         info['value_target'] = ret.mean().cpu().item()
         info['value_predicted'] = value_pred.mean().cpu().item()

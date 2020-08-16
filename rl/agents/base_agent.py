@@ -5,11 +5,12 @@ class BaseAgent(object):
     def __init__(self, config, ob_space):
         self._config = config
 
-    def act(self, ob, is_train=True, pred_value=False):
-        ac, activation = self._actor.act(ob, is_train=is_train)
+    def act(self, ob, is_train=True, pred_value=False, return_log_prob=False):
+        ret = self._actor.act(ob, is_train=is_train, return_log_prob=return_log_prob)
+        ret = list(ret)
         if pred_value:
-            return ac, activation, self._critic(to_tensor(ob, self._config.device)).detach().cpu().numpy()
-        return ac, activation
+            ret.append(self.value(ob))
+        return tuple(ret)
 
     def value(self, ob):
         return self._critic(to_tensor(ob, self._config.device)).detach().cpu().numpy()

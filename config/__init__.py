@@ -46,7 +46,7 @@ def argparser():
                         help="the times to update the network per epoch")
     parser.add_argument("--batch_size", type=int, default=256,
                         help="the sample batch size")
-    parser.add_argument("--max_grad_norm", type=float, default=100)
+    parser.add_argument("--max_grad_norm", type=float, default=0.5)
     parser.add_argument("--max_global_step", type=int, default=int(2e6))
     parser.add_argument("--gpu", type=int, default=None)
     parser.add_argument("--multiprocessing", type=str2bool, default=False)
@@ -67,6 +67,7 @@ def argparser():
     parser.add_argument("--entropy_loss_coeff", type=float, default=1e-4)
     parser.add_argument("--rollout_length", type=int, default=1000)
     parser.add_argument("--gae_lambda", type=float, default=0.95)
+    parser.add_argument("--ppo_epoch", type=int, default=10)
 
     # log
     parser.add_argument("--log_interval", type=int, default=20)

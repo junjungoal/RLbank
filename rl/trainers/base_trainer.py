@@ -193,6 +193,8 @@ class BaseTrainer(object):
                 ep_rew = reward
                 reward_info.add(info)
                 if record:
+                    frame_info = info.copy()
+                    frame_info['ac'] = ac['default']
                     frames.append(self._create_frame(env, info))
 
             ep_info.add({'len': ep_len, 'ep_rew': ep_rew})

@@ -282,6 +282,10 @@ class DummyVecEnv(VecEnv):
 
     def step_async(self, actions):
         listify = True
+        if isinstance(actions, list):
+            actions = {key: val for ac_i in actions for key, val in ac_i.items()}
+        if isinstance(actions, dict):
+            actions = np.concatenate([actions[key] for key in self.action_space.spaces.keys() if key in actions])
         try:
             if len(actions) == self.num_envs:
                 listify = False
@@ -293,6 +297,16 @@ class DummyVecEnv(VecEnv):
         else:
             assert self.num_envs == 1, "actions {} is either not a list or has a wrong size - cannot match to {} environments".format(actions, self.num_envs)
             self.actions = [actions]
+
+    # def step_async(self, actions):
+    #     if isinstance(actions, list):
+    #         actions = {key: val for ac_i in actions for key, val in ac_i.items()}
+    #     if isinstance(actions, dict):
+    #         actions = np.concatenate([actions[key] for key in self.action_space.spaces.keys() if key in actions])
+    #     assert len(actions) == len(self.parent_pipes)
+    #     for pipe, act in zip(self.parent_pipes, actions):
+    #         pipe.send(('step', act))
+    #     self.waiting_step = True
 
     def step_wait(self):
         for e in range(self.num_envs):

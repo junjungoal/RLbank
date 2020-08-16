@@ -48,16 +48,17 @@ class OnPolicyTrainer(BaseTrainer):
             train_info = {}
             for _ in range(config.rollout_length):
                 transition = {}
-                ac, ac_before_activation, vpred = self._agent.act(ob, pred_value=True)
-                rollout.add({'ob': ob, 'ac': ac, 'ac_before_activation': ac_before_activation, 'vpred': vpred})
+                ac, ac_before_activation, log_prob, vpred = self._agent.act(ob, pred_value=True, return_log_prob=True)
+                rollout.add({'ob': ob, 'ac': ac, 'ac_before_activation': ac_before_activation, 'vpred': vpred, 'log_prob': log_prob})
                 ob, reward, dones , infos = env.step(ac)
                 ep_rew += reward
+                pbar.update(1)
                 for i, (info, done) in enumerate(zip(infos, dones)):
                     reward_infos[i].add(info)
                     if done:
                         reward_info_dict = reward_infos[i].get_dict(reduction='sum', only_scalar=True)
                         ep_info.add(reward_info_dict)
-                rollout.add({'done': done, 'rew': reward, 'ob_next': ob})
+                rollout.add({'done': dones, 'rew': reward, 'ob_next': ob})
 
                 ep_len += 1
                 step += 1
@@ -65,11 +66,10 @@ class OnPolicyTrainer(BaseTrainer):
             vpred = self._agent.value(ob)
             rollout.add({'vpred': vpred})
             self._agent.store_episode(rollout.get())
-            pbar.update(1)
-            if step % config.log_interval == 0:
-                logger.info("Update networks %d", update_iter)
             train_info = self._agent.train()
 
+            import pdb
+            pdb.set_trace()
             ep_info = ep_info.get_dict(only_scalar=True)
 
             logger.info("Rollout %d: %s", update_iter,
@@ -77,8 +77,8 @@ class OnPolicyTrainer(BaseTrainer):
              if np.isscalar(v)})
             update_iter += 1
 
-            #
             if update_iter % config.log_interval == 0:
+                logger.info("Update networks %d", update_iter)
                 train_info.update({
                     'sec': (time() - st_time) / config.log_interval,
                     'steps_per_sec': (step - st_step) / (time() - st_time),
@@ -93,7 +93,5 @@ class OnPolicyTrainer(BaseTrainer):
                 _, info, vids = self._evaluate(step=step, record=config.record)
                 self._log_test(step, info, vids)
 
-            # if update_iter % config.ckpt_interval == 0 and init_step > config.init_steps:
-            #     self._save_ckpt(step, update_iter)
-            #
-            #
+            if update_iter % config.ckpt_interval == 0:
+                self._save_ckpt(step, update_iter)

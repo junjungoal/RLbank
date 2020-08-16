@@ -3,6 +3,7 @@ from time import time
 
 import numpy as np
 from util.gym import observation_size, action_size
+from torch.utils.data.sampler import BatchSampler, SubsetRandomSampler
 
 class ReplayBuffer:
     """ Replay Buffer. """
@@ -124,20 +125,8 @@ class MultiProcessReplayBuffer:
         self._vpreds = np.empty((buffer_size, num_processes, 1))
         self._adv = np.empty((buffer_size, num_processes, 1))
         self._ret = np.empty((buffer_size, num_processes, 1))
+        self._log_prob = np.empty((buffer_size, num_processes, 1))
         self._sample_func = sample_func
-
-    def store_sample(self, rollout):
-        for k in self._obs.keys():
-            self._obs[k][self._idx] = rollout['ob'][0][k]
-            self._obs_next[k][self._idx] = rollout['ob_next'][0][k]
-        for k in self._actions.keys():
-            self._actions[k][self._idx] = rollout['ac'][0][k]
-        self._rewards[self._idx] = rollout['rew'][0].reshape((-1, 1))
-        self._terminals[self._idx] = rollout['done'][0].reshape((-1, 1))
-
-        idx = self._idx = (self._idx + 1) % self._size
-        if self._current_size < self._size:
-            self._current_size += 1
 
     def store_episode(self, rollout):
         """ Stores the episode. """
@@ -166,6 +155,7 @@ class MultiProcessReplayBuffer:
                 self._vpreds[idx] = rollout['vpred'][i].reshape(-1, 1)
                 self._adv[idx] = rollout['adv'][i].reshape(-1, 1)
                 self._ret[idx] = rollout['ret'][i].reshape(-1, 1)
+                self._log_prob[idx] = rollout['log_prob'][i].reshape(-1, 1)
                 idx = self._idx = (self._idx + 1) % self._size
             else:
                 self._rewards[self._current_size] = rollout['rew'][i].reshape(-1, 1)
@@ -173,6 +163,7 @@ class MultiProcessReplayBuffer:
                 self._vpreds[self._current_size] = rollout['vpred'][i].reshape(-1, 1)
                 self._adv[self._current_size] = rollout['adv'][i].reshape(-1, 1)
                 self._ret[self._current_size] = rollout['ret'][i].reshape(-1, 1)
+                self._log_prob[self._current_size] = rollout['log_prob'][i].reshape(-1, 1)
                 self._current_size += 1
 
     def sample(self, batch_size):
@@ -190,6 +181,7 @@ class MultiProcessReplayBuffer:
         # vpred = self._vpreds.reshape((self._size*num_processes, -1))[idxs]
         adv = self._adv.reshape((self._size*num_processes, -1))[idxs]
         ret = self._ret.reshape((self._size*num_processes, -1))[idxs]
+        log_prob = self._log_prob.reshape((self._size*num_processes, -1))[idxs]
 
         return {
             'ob': ob,
@@ -197,10 +189,38 @@ class MultiProcessReplayBuffer:
             'ac_before_activation': ac_before_activation,
             'done': done,
             'ret': ret,
-            'adv': adv
+            'adv': adv,
+            'log_prob': log_prob
         }
 
-        return transitions
+
+    def generator(self, batch_size):
+        num_processes = self._rewards.shape[1]
+        sampler = BatchSampler(SubsetRandomSampler(range(self._size*num_processes)),
+                               batch_size,
+                               drop_last=True)
+        for idxs in sampler:
+            transitions = {}
+            ob = OrderedDict([(k, v.reshape(self._size*num_processes, -1)[idxs]) for k, v in self._obs.items()])
+            # ob_next = OrderedDict([(k, v[idxs]) for k, v in self._obs_next.items()])
+            # reward = self._rewards.reshape((self._size*num_processes, -1))[idxs]
+            done = self._terminals.reshape((self._size*num_processes, -1))[idxs]
+            action = OrderedDict([(k, v.reshape(self._size*num_processes, -1)[idxs]) for k, v in self._actions.items()])
+            ac_before_activation = OrderedDict([(k, v.reshape(self._size*num_processes, -1)[idxs]) for k, v in self._ac_before_activation.items()])
+            vpred = self._vpreds.reshape((self._size*num_processes, -1))[idxs]
+            adv = self._adv.reshape((self._size*num_processes, -1))[idxs]
+            ret = self._ret.reshape((self._size*num_processes, -1))[idxs]
+            log_prob = self._log_prob.reshape((self._size*num_processes, -1))[idxs]
+            yield {
+                'ob': ob,
+                'ac': action,
+                'ac_before_activation': ac_before_activation,
+                'done': done,
+                'ret': ret,
+                'adv': adv,
+                'vpred': vpred,
+                'log_prob': log_prob
+            }
 
     def clear(self):
         self._idx = 0
@@ -216,5 +236,4 @@ class MultiProcessReplayBuffer:
         self._vpreds = np.empty((buffer_size, num_processes, 1))
         self._adv = np.empty((buffer_size, num_processes, 1))
         self._ret = np.empty((buffer_size, num_processes, 1))
-
-
+        self._log_prob = np.empty((buffer_size, num_processes, 1))
