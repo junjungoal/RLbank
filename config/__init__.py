@@ -16,7 +16,7 @@ def argparser():
 
     # training algorithm
     parser.add_argument("--algo", type=str, default="sac",
-                        choices=["sac", "td3", "ddpg", "ppo"])
+                        choices=["sac", "td3", "ddpg", "ppo", "dqn"])
     parser.add_argument("--policy", type=str, default="mlp",
                         choices=["mlp"])
 

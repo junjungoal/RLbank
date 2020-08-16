@@ -17,7 +17,7 @@ from gym import envs
 from gym import spaces, error
 # from gym.wrappers import TimeLimit
 
-from rl.policies import get_actor_critic_by_name
+from rl.policies import get_actor_critic_by_name, get_dqn_by_name
 from util.pytorch import get_ckpt_path, count_parameters, to_tensor
 from util.logger import logger
 from env.base import EnvWrapper
@@ -38,6 +38,9 @@ def get_agent_by_name(algo):
     elif algo == 'ppo':
         from rl.agents.ppo_agent import PPOAgent
         return PPOAgent
+    elif algo == 'dqn':
+        from rl.agents.dqn_agent import DQNAgent
+        return DQNAgent
     else:
         raise NotImplementedError
 
@@ -60,15 +63,20 @@ class BaseTrainer(object):
             self._env_eval = gym.make(config.env, **copy.copy(config).__dict__)
 
         # get actor and critic networks
-        actor, critic = get_actor_critic_by_name(config.policy)
-
         ac_space = self._env.action_space
         ob_space = self._env.observation_space
 
-        # build up networks
-        self._agent = get_agent_by_name(config.algo)(
-            config, ob_space, ac_space, actor, critic
-        )
+        if config.algo in ['dqn']:
+            dqn = get_dqn_by_name(config.policy)
+            self._agent = get_agent_by_name(config.algo)(
+                config, ob_space, ac_space, dqn
+            )
+        else:
+            actor, critic = get_actor_critic_by_name(config.policy)
+            # build up networks
+            self._agent = get_agent_by_name(config.algo)(
+                config, ob_space, ac_space, actor, critic
+            )
 
         if self._config.is_train:
             exclude = ['device']

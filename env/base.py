@@ -141,7 +141,7 @@ class BaseEnv(gym.Env):
         if isinstance(action, list):
             action = {key: val for ac_i in action for key, val in ac_i.items()}
         if isinstance(action, dict):
-            action = np.concatenate([action[key] for key in self.action_space.spaces.keys() if key in action])
+            action = np.concatenate((action[key] if not isinstance(action[key], int) else np.array([action[key]]) for key in self.action_space.spaces.keys()))
         ob, reward, done, info = self._step(action)
         done, info, penalty = self._after_step(reward, done, info)
         return ob, reward + penalty, done, info
@@ -410,7 +410,10 @@ class EnvWrapper(gym.Wrapper):
 
     def step(self, action):
         if isinstance(action, OrderedDict):
-            action = np.concatenate([action[key] for key in self.action_space.spaces.keys()])
+            # action = np.concatenate([action[key] for key in self.action_space.spaces.keys()])
+            action = np.concatenate([action[key] if not isinstance(action[key], int) else np.array([action[key]]) for key in self.action_space.spaces.keys()])
+        if len(action) == 1:
+            action = action[0]
         ob, reward, done, info = self._step(action)
         done, info = self._after_step(reward, done, info)
         return ob, reward, done, info

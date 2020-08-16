@@ -38,6 +38,7 @@ class OnPolicyTrainer(BaseTrainer):
         episode = 0
         st_time = time()
         st_step = step
+        num_updates = int(config.max_global_step // config.rollout_length // config.num_processes)
         while step < config.max_global_step:
             ob = env.reset()
             done = False
@@ -46,6 +47,12 @@ class OnPolicyTrainer(BaseTrainer):
             reward_infos = [Info() for _ in range(config.num_processes)]
             ep_info = Info()
             train_info = {}
+            update_linear_schedule(self._agent._actor_optim,
+                                   update_iter, num_updates,
+                                   self._agent._actor_optim.lr)
+            update_linear_schedule(self._agent._critic_optim,
+                                   update_iter, num_updates,
+                                   self._agent._critic_optim.lr)
             for _ in range(config.rollout_length):
                 transition = {}
                 ac, ac_before_activation, log_prob, vpred = self._agent.act(ob, pred_value=True, return_log_prob=True)
@@ -68,8 +75,6 @@ class OnPolicyTrainer(BaseTrainer):
             self._agent.store_episode(rollout.get())
             train_info = self._agent.train()
 
-            import pdb
-            pdb.set_trace()
             ep_info = ep_info.get_dict(only_scalar=True)
 
             logger.info("Rollout %d: %s", update_iter,

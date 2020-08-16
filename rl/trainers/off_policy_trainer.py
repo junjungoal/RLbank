@@ -41,7 +41,6 @@ class OffPolicyTrainer(BaseTrainer):
         st_step = step
         init_step = step
         init_episode = 0
-        num_updates = int(config.max_global_step // config.rollout_length // config.num_processes)
         while step < config.max_global_step:
             ob = env.reset()
             done = False
@@ -50,12 +49,6 @@ class OffPolicyTrainer(BaseTrainer):
             reward_info = Info()
             ep_info = Info()
             train_info = {}
-            update_linear_schedule(self._agent._actor_optim,
-                                   update_iter, num_updates,
-                                   self._agent._actor_optim.lr)
-            update_linear_schedule(self._agent._critic_optim,
-                                   update_iter, num_updates,
-                                   self._agent._critic_optim.lr)
             while not done and ep_len < env.max_episode_steps:
                 transition = {}
                 if init_step > config.init_steps:
