@@ -78,7 +78,7 @@ class OnPolicyTrainer(BaseTrainer):
             update_iter += 1
 
             #
-            if episode % config.log_interval == 0:
+            if update_iter % config.log_interval == 0:
                 train_info.update({
                     'sec': (time() - st_time) / config.log_interval,
                     'steps_per_sec': (step - st_step) / (time() - st_time),
@@ -88,7 +88,7 @@ class OnPolicyTrainer(BaseTrainer):
                 st_step = step
                 self._log_train(step, train_info, ep_info)
 
-            if episode % config.evaluate_interval == 0:
+            if update_iter % config.evaluate_interval == 0:
                 logger.info("Evaluate at %d", update_iter)
                 _, info, vids = self._evaluate(step=step, record=config.record)
                 self._log_test(step, info, vids)
