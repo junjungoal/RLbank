@@ -49,7 +49,7 @@ class DDPGAgent(BaseAgent):
         self._log_creation()
 
     def _log_creation(self):
-        logger.info('creating a TD3 agent')
+        logger.info('creating a DDPG agent')
         logger.info('the actor has %d parameters', count_parameters(self._actor))
         logger.info('the critic has %d parameters', count_parameters(self._critic))
 
