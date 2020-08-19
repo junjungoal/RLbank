@@ -3,6 +3,11 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+def tie_weights(src, trg):
+    assert type(src) == type(trg)
+    trg.weight = src.weight
+    trg.bias = src.bias
+
 class CNN(nn.Module):
     def __init__(self, config, input_dim):
         super().__init__()
@@ -34,6 +39,9 @@ class CNN(nn.Module):
         out = out.flatten(start_dim=1)
         return out
 
+    def copy_conv_weights_from(self, source):
+        for i in range(len(self.convs)):
+            tie_weights(src=source.convs[i], trg=self.convs[i])
 
 def fanin_init(tensor):
     size = tensor.size()

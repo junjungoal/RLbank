@@ -4,25 +4,27 @@ from time import time
 import numpy as np
 from util.gym import observation_size, action_size
 from torch.utils.data.sampler import BatchSampler, SubsetRandomSampler
+from util.image import random_crop, center_crop_image
+import copy
 
 class ReplayBuffer:
     """ Replay Buffer. """
 
-    def __init__(self, buffer_size, sample_func, ob_space, ac_space):
-        self._size = buffer_size
+    def __init__(self, config, ob_space, ac_space):
+        self._config = config
+        self._size = config.buffer_size
 
         # memory management
         self._idx = 0
         self._current_size = 0
-        self._sample_func = sample_func
 
         # create the buffer to store info
         self._buffers= defaultdict(list)
-        self._obs = {k: np.empty((buffer_size, observation_size(ob_space[k]))) for k in ob_space.spaces.keys()}
-        self._obs_next = {k: np.empty((buffer_size, observation_size(ob_space[k]))) for k in ob_space.spaces.keys()}
-        self._actions = {k: np.empty((buffer_size, action_size(ac_space[k]))) for k in ac_space.spaces.keys()}
-        self._rewards = np.empty((buffer_size, 1))
-        self._terminals = np.empty((buffer_size, 1))
+        self._obs = {k: np.empty((self._size, *ob_space[k].shape)) for k in ob_space.spaces.keys()}
+        self._obs_next = {k: np.empty((self._size, *ob_space[k].shape)) for k in ob_space.spaces.keys()}
+        self._actions = {k: np.empty((self._size, action_size(ac_space[k]))) for k in ac_space.spaces.keys()}
+        self._rewards = np.empty((self._size, 1))
+        self._terminals = np.empty((self._size, 1))
 
     def clear(self):
         self._idx = 0
@@ -70,16 +72,42 @@ class ReplayBuffer:
                 self._terminals[self._current_size+i] = rollout['done'][i]
                 self._current_size += 1
 
+    def sample_cpc(self, batch_size):
+        idxs = np.random.randint(0, self._current_size, batch_size)
+        ob = OrderedDict([(k, v[idxs]) for k, v in self._obs.items()])
+        ob_next = OrderedDict([(k, v[idxs]) for k, v in self._obs_next.items()])
+        pos = copy.deepcopy(ob)
+        ob['default'] = random_crop(ob['default'], self._config.img_height)
+        ob_next['default'] = random_crop(ob_next['default'], self._config.img_height)
+        pos = random_crop(pos['default'], self._config.img_height)
+
+        cpc_kwargs = dict(ob_anchor=ob, ob_pos=pos, time_anchor=None, time_pos=None)
+
+        done = self._terminals[idxs]
+        rew = self._rewards[idxs]
+        ac = OrderedDict([(k, v[idxs]) for k, v in self._actions.items()])
+        return {'ob': ob,
+               'ob_next': ob_next,
+               'done': done,
+               'rew': rew,
+               'ac': ac,
+               'cpc_kwargs': cpc_kwargs}
+
+
     def sample(self, batch_size):
         """ Samples the data from the replay buffer. """
         # sample transitions
-        buffers = {'ob': self._obs,
-                   'ob_next': self._obs_next,
-                   'done': self._terminals,
-                   'rew': self._rewards,
-                   'ac': self._actions}
-        transitions = self._sample_func(buffers, batch_size, self._current_size)
-        return transitions
+        idxs = np.random.randint(0, self._current_size, batch_size)
+        ob = OrderedDict([(k, v[idxs]) for k, v in self._obs.items()])
+        ob_next = OrderedDict([(k, v[idxs]) for k, v in self._obs_next.items()])
+        done = self._terminals[idxs]
+        rew = self._rewards[idxs]
+        ac = OrderedDict([(k, v[idxs]) for k, v in self._actions.items()])
+        return {'ob': ob,
+               'ob_next': ob_next,
+               'done': done,
+               'rew': rew,
+               'ac': ac}
 
     def state_dict(self):
         return self._buffers
@@ -89,29 +117,13 @@ class ReplayBuffer:
         self._current_size = len(self._buffers['ac'])
 
 
-class RandomSampler:
-    """ Samples a batch of transitions from replay buffer. """
-    def sample_func(self, episode_batch, batch_size_in_transitions, size):
-        batch_size = batch_size_in_transitions
-
-        idxs = np.random.randint(0, size, batch_size)
-        transitions = {}
-        for k in episode_batch.keys():
-            if isinstance(episode_batch[k], dict):
-                data = {}
-                for sub_key, v in episode_batch[k].items():
-                    data[sub_key] = v[idxs]
-                transitions[k] = data
-            else:
-                transitions[k] = episode_batch[k][idxs]
-        return transitions
-
 
 class MultiProcessReplayBuffer:
-    def __init__(self, buffer_size, num_processes, sample_func, ob_space, ac_space):
+    def __init__(self, config, num_processes, ob_space, ac_space):
         self._idx = 0
         self._current_size = 0
-        self._size = buffer_size
+        self._config = config
+        self._size = config.rollout_length
         self._ob_space = ob_space
         self._ac_space = ac_space
         self._num_processes = num_processes
@@ -126,7 +138,6 @@ class MultiProcessReplayBuffer:
         self._adv = np.empty((buffer_size, num_processes, 1))
         self._ret = np.empty((buffer_size, num_processes, 1))
         self._log_prob = np.empty((buffer_size, num_processes, 1))
-        self._sample_func = sample_func
 
     def store_episode(self, rollout):
         """ Stores the episode. """

@@ -15,6 +15,7 @@ from tqdm import tqdm, trange
 import gym
 from gym import envs
 from gym import spaces, error
+import dmc2gym
 # from gym.wrappers import TimeLimit
 
 from rl.policies import get_actor_critic_by_name, get_dqn_by_name
@@ -50,17 +51,37 @@ class BaseTrainer(object):
 
         all_envs = envs.registry.all()
         env_ids = [env_spec.id for env_spec in all_envs]
-        if config.env in env_ids:
-            wrapper = EnvWrapper if not config.multiprocessing else make_vec_envs
-            if config.multiprocessing:
-                self._env = make_vec_envs(config.env, **config.__dict__)
-                self._env_eval = EnvWrapper(gym.make(config.env), copy.copy(config))
-            else:
-                self._env = EnvWrapper(gym.make(config.env), config)
-                self._env_eval = EnvWrapper(gym.make(config.env), copy.copy(config))
+        # if config.env in env_ids:
+        wrapper = EnvWrapper if not config.multiprocessing else make_vec_envs
+        if config.multiprocessing:
+            self._env = make_vec_envs(config.env, **config.__dict__)
+            self._env_eval = EnvWrapper(gym.make(config.env), copy.copy(config))
         else:
-            self._env = gym.make(config.env, **config.__dict__)
-            self._env_eval = gym.make(config.env, **copy.copy(config).__dict__)
+            # self._env = EnvWrapper(gym.make(config.env), config)
+            # self._env_eval = EnvWrapper(gym.make(config.env), copy.copy(config))
+            self._env = EnvWrapper(dmc2gym.make(
+                domain_name=config.env,
+                task_name=config.task_name,
+                seed=config.seed,
+                visualize_reward=False,
+                from_pixels=(config.policy=='cnn'),
+                height=config.pre_transform_image_size,
+                width=config.pre_transform_image_size,
+                frame_skip=1
+            ), config)
+            self._env_eval = EnvWrapper(dmc2gym.make(
+                domain_name=config.env,
+                task_name=config.task_name,
+                seed=config.seed,
+                visualize_reward=False,
+                from_pixels=(config.policy=='cnn'),
+                height=config.pre_transform_image_size,
+                width=config.pre_transform_image_size,
+                frame_skip=1
+            ), copy.copy(config))
+        # else:
+        #     self._env = gym.make(config.env, **config.__dict__)
+        #     self._env_eval = gym.make(config.env, **copy.copy(config).__dict__)
 
         # get actor and critic networks
         ac_space = self._env.action_space

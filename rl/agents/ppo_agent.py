@@ -5,7 +5,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 
-from rl.dataset import ReplayBuffer, RandomSampler, MultiProcessReplayBuffer
+from rl.dataset import ReplayBuffer, MultiProcessReplayBuffer
 from rl.agents.base_agent import BaseAgent
 from util.logger import logger
 from util.pytorch import optimizer_cuda, count_parameters, \
@@ -27,11 +27,9 @@ class PPOAgent(BaseAgent):
         self._actor_optim = optim.Adam(self._actor.parameters(), lr=config.lr_actor)
         self._critic_optim = optim.Adam(self._critic.parameters(), lr=config.lr_critic)
 
-        sampler = RandomSampler()
         # self._buffer = ReplayBuffer(['ob', 'ac', 'done', 'rew', 'ret', 'adv', 'ac_before_activation'],
-        self._buffer = MultiProcessReplayBuffer(config.rollout_length,
+        self._buffer = MultiProcessReplayBuffer(config,
                                     config.num_processes,
-                                    sampler.sample_func,
                                     ob_space, ac_space)
 
 

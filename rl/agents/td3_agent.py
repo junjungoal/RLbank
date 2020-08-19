@@ -6,7 +6,7 @@ import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
 
-from rl.dataset import ReplayBuffer, RandomSampler
+from rl.dataset import ReplayBuffer
 from rl.agents.base_agent import BaseAgent
 from util.logger import logger
 from util.pytorch import optimizer_cuda, count_parameters, to_tensor
@@ -42,9 +42,7 @@ class TD3Agent(BaseAgent):
         self._critic1_optim = optim.Adam(self._critic1.parameters(), lr=config.lr_critic)
         self._critic2_optim = optim.Adam(self._critic2.parameters(), lr=config.lr_critic)
 
-        sampler = RandomSampler()
-        self._buffer = ReplayBuffer(config.buffer_size,
-                                    sampler.sample_func,
+        self._buffer = ReplayBuffer(config,
                                     ob_space,
                                     ac_space)
 
