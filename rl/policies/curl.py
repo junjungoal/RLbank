@@ -13,14 +13,15 @@ class CURL(nn.Module):
         self._encoder = critic.base
         self._encoder_target = critic_target.base
 
-        self._w = nn.Parameter(torch.rand(config.rl_hid_size, config.rl_hid_size))
+        self._w = nn.Parameter(torch.rand(config.encoder_feature_dim, config.encoder_feature_dim))
 
     def encode(self, ob, detach=False, ema=False):
+        x = ob['default'] / 255.
         if ema:
             with torch.no_grad():
-                z_out = self._encoder_target(ob)
+                z_out = self._encoder_target(x)
         else:
-            z_out = self._encoder(ob)
+            z_out = self._encoder(x)
 
         if detach:
             z_out = z_out.detach()
@@ -28,8 +29,9 @@ class CURL(nn.Module):
         return z_out
 
     def compute_logits(self, z_a, z_pos):
-        Wz = torch.matmul(self.W, z_pos.T)
+        Wz = torch.matmul(self._w, z_pos.T)
         logits = torch.matmul(z_a, Wz)
         logits = logits - torch.max(logits, 1)[0][:, None]
+        return logits
 
 

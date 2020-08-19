@@ -2,7 +2,7 @@ import os
 import time
 import logging
 import traceback
-from collections import OrderedDict
+from collections import OrderedDict, deque
 from gym import spaces
 
 try:
@@ -403,9 +403,22 @@ class EnvWrapper(gym.Wrapper):
         self.action_space = spaces.Dict([('default', env.action_space)])
         self.observation_space = spaces.Dict([('default', env.observation_space)])
         self.max_episode_steps = env._max_episode_steps
+        self._config = config
+        if config.frame_stack is not None:
+            self._frames = deque([], maxlen=config.frame_stack)
+            shp = self.observation_space['default'].shape
+            self.observation_space = spaces.Dict([('default', gym.spaces.Box(
+                low=np.tile(self.observation_space['default'].low, (config.frame_stack, 1, 1)),
+                high=np.tile(self.observation_space['default'].high, (config.frame_stack, 1, 1)),
+                # shape=((shp[0] * config.frame_stack,) + shp[1:]),
+                dtype=self.observation_space['default'].dtype
+            ))])
 
     def _step(self, action):
         observation, reward, done, info = self.env.step(action)
+        if self._config.frame_stack is not None:
+            self._frames.append(observation)
+            observation = np.concatenate(list(self._frames), axis=0)
         return self.observation(observation), reward, done, info
 
     def step(self, action):
@@ -446,6 +459,10 @@ class EnvWrapper(gym.Wrapper):
         self._episode_reward = 0
         self._episode_time = time.time()
         ob = self.env.reset(**kwargs)
+        if self._config.frame_stack is not None:
+            for _ in range(self._config.frame_stack):
+                self._frames.append(ob)
+            ob = np.concatenate(list(self._frames), axis=0)
         return self.observation(ob)
 
     def observation(self, observation):

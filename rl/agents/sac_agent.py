@@ -197,7 +197,7 @@ class SACAgent(BaseAgent):
         z_pos = self._curl.encode(o_pos, ema=True)
         logits = self._curl.compute_logits(z_a, z_pos)
         labels = torch.arange(logits.shape[0]).long().to(self._config.device)
-        cpc_loss = torch.cross_entropy(logits, labels)
+        cpc_loss = F.cross_entropy(logits, labels)
         info['cpc_loss'] = cpc_loss.cpu().item()
 
         self._encoder_optim.zero_grad()

@@ -79,7 +79,7 @@ class ReplayBuffer:
         pos = copy.deepcopy(ob)
         ob['default'] = random_crop(ob['default'], self._config.img_height)
         ob_next['default'] = random_crop(ob_next['default'], self._config.img_height)
-        pos = random_crop(pos['default'], self._config.img_height)
+        pos['default'] = random_crop(pos['default'], self._config.img_height)
 
         cpc_kwargs = dict(ob_anchor=ob, ob_pos=pos, time_anchor=None, time_pos=None)
 

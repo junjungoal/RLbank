@@ -39,7 +39,7 @@ class CNNActor(Actor):
                 out_size += config.rl_hid_size/4
                 self._aux_keys.append(k)
 
-        self.fc = MLP(config, int(out_size), config.rl_hid_size, [config.rl_hid_size], last_activation=True)
+        self.fc = MLP(config, config.encoder_feature_dim, config.rl_hid_size, [config.rl_hid_size], last_activation=True)
         self.fc_means = nn.ModuleDict()
         self.fc_log_stds = nn.ModuleDict()
 
@@ -55,7 +55,7 @@ class CNNActor(Actor):
 
     def forward(self, ob, deterministic=False):
         inp = list(ob.values())
-        x = ob['default']
+        x = ob['default'] / 255.
 
         # img process
         if len(x.shape) ==3:
@@ -109,7 +109,7 @@ class CNNCritic(Critic):
         self.base = CNN(config, input_dim)
 
         self.aux_fc = nn.ModuleDict()
-        out_size = self.base.output_size
+        out_size = config.encoder_feature_dim
 
         if ac_space is not None:
             out_size += action_size(ac_space)

@@ -17,7 +17,8 @@ def argparser():
     parser.add_argument("--img_height", type=int, default=84)
     parser.add_argument("--img_width", type=int, default=84)
     parser.add_argument("--pre_transform_image_size", type=int, default=100)
-    parser.add_argument('--frame_stack', type=int, default=3)
+    parser.add_argument('--frame_stack', type=int, default=None)
+    parser.add_argument("--action_repeat", type=int, default=4)
 
     # training algorithm
     parser.add_argument("--algo", type=str, default="sac",
@@ -34,8 +35,9 @@ def argparser():
     parser.add_argument("--tanh_policy", type=str2bool, default=True)
     parser.add_argument("--actor_num_hid_layers", type=int, default=2)
     parser.add_argument("--kernel_size", nargs='+', default=[3, 3, 3])
-    parser.add_argument("--conv_dim", nargs='+', default=[32, 64, 32])
+    parser.add_argument("--conv_dim", nargs='+', default=[32, 32, 32])
     parser.add_argument("--stride", nargs='+', default=[2, 1, 1])
+    parser.add_argument("--encoder_feature_dim", type=int, default=50)
 
     # off-policy rl
     parser.add_argument("--buffer_size", type=int, default=int(1e6),

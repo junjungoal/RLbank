@@ -23,21 +23,26 @@ class CNN(nn.Module):
             w = int(np.floor((w - (int(k) - 1) - 1) / int(s) + 1))
             input_dim = d
 
+        print('Output of CNN = %d x %d x %d' % (w, w, d))
+        self.w = w
+        self.output_size = w * w * d
+
+        self._fc = nn.Linear(self.output_size, config.encoder_feature_dim)
+        self._fc_norm = nn.LayerNorm(config.encoder_feature_dim)
+
         # screen_width == 32 (8,4)-(3,2) -> 3x3
         # screen_width == 64 (8,4)-(3,2)-(3,2) -> 3x3
         # screen_width == 128 (8,4)-(3,2)-(3,2)-(3,2) -> 3x3
         # screen_width == 256 (8,4)-(3,2)-(3,2)-(3,2) -> 7x7
 
-        print('Output of CNN = %d x %d x %d' % (w, w, d))
-        self.w = w
-        self.output_size = w * w * d
 
     def forward(self, ob):
         out = ob
         for conv in self.convs:
             out = self.activation_fn(conv(out))
         out = out.flatten(start_dim=1)
-        return out
+        out = self._fc(out)
+        return self._fc_norm(out)
 
     def copy_conv_weights_from(self, source):
         for i in range(len(self.convs)):

@@ -1,11 +1,16 @@
 from collections import OrderedDict
 from util.pytorch import to_tensor
+from util.image import center_crop_image
+import copy
 
 class BaseAgent(object):
     def __init__(self, config, ob_space):
         self._config = config
 
     def act(self, ob, is_train=True, pred_value=False, return_log_prob=False):
+        if self._config.policy == 'cnn' and ob['default'].shape[-1] != self._config.img_height:
+            ob = copy.deepcopy(ob)
+            ob['default'] = center_crop_image(ob['default'], self._config.img_height)
         ret = self._actor.act(ob, is_train=is_train, return_log_prob=return_log_prob)
         ret = list(ret)
         if pred_value:
