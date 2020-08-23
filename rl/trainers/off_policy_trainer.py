@@ -68,8 +68,6 @@ class OffPolicyTrainer(BaseTrainer):
                     ep_len += 1
                     step += 1
                     pbar.update(1)
-                    if step % config.log_interval == 0:
-                        logger.info("Update networks %d", update_iter)
                     train_info = self._agent.train()
                     update_iter += 1
 
@@ -86,6 +84,7 @@ class OffPolicyTrainer(BaseTrainer):
                 ep_info = ep_info.get_dict(only_scalar=True)
 
                 if episode % config.log_interval == 0:
+                    logger.info("Update networks %d", update_iter)
                     train_info.update({
                         'sec': (time() - st_time) / config.log_interval,
                         'steps_per_sec': (step - st_step) / (time() - st_time),

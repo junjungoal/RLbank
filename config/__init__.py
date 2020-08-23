@@ -18,7 +18,7 @@ def argparser():
     parser.add_argument("--img_width", type=int, default=84)
     parser.add_argument("--pre_transform_image_size", type=int, default=100)
     parser.add_argument('--frame_stack', type=int, default=None)
-    parser.add_argument("--action_repeat", type=int, default=4)
+    parser.add_argument("--action_repeat", type=int, default=2)
 
     # training algorithm
     parser.add_argument("--algo", type=str, default="sac",
